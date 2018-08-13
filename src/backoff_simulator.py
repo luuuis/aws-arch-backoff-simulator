@@ -51,7 +51,11 @@ class ExpoBackoffDecorr(Backoff):
         self.sleep = min(self.cap, random.uniform(self.base, self.sleep * 3))
         return self.sleep
 
-# Small class to track two counters        
+class ExpoBackoffRandomize(Backoff):
+    def backoff(self, n):
+        return min(self.cap, pow(2, random.uniform(1, 2) * n) * self.base)
+
+# Small class to track two counters
 class Stats:
     def __init__(self):
         self.failures = 0
@@ -140,6 +144,7 @@ backoff_types = ((ExpoBackoff, "Exponential"),
                  (ExpoBackoffDecorr,"Decorr"),
                  (ExpoBackoffEqualJitter, "EqualJitter"),
                  (ExpoBackoffFullJitter, "FullJitter"),
+                 (ExpoBackoffRandomize, "Randomize"),
                  (NoBackoff, "None"))
 
 def run():
@@ -149,11 +154,13 @@ def run():
             clients = i * 10
             for backoff in backoff_types:
                 with open("ts_" + backoff[1], "w") as ts_f:
-                    stats = Stats()
-                    tm = 0
-                    for t in xrange(0, 100):
-                        queue, stats = setup_sim(clients, backoff[0], ts_f, stats)
-                        tm += run_sim(queue)
-                    f.write("%d,%d,%d,%s\n"%(clients, tm/100, stats.calls/100, backoff[1]))
-                    
+                    with open(backoff[1] + ".csv", "w") as ts_f:
+                        f.write("clients,time,calls,Algorithm\n")
+                        stats = Stats()
+                        tm = 0
+                        for t in xrange(0, 100):
+                            queue, stats = setup_sim(clients, backoff[0], ts_f, stats)
+                            tm += run_sim(queue)
+                        f.write("%d,%d,%d,%s\n"%(clients, tm/100, stats.calls/100, backoff[1]))
+
 run()
